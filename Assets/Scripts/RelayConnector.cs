@@ -2,17 +2,23 @@ using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Networking.Transport.Relay;
+using Unity.Services.Core;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using UnityEngine;
 
 public class RelayConnector : MonoBehaviour
 {
+    async void Awake()
+    {
+        await UnityServices.InitializeAsync();
+    }
+
     public async Task<string> StartHostAsync()
     {
         try
         {
-            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4); // до 4 игроков
+            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(4);
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
             Debug.Log("[Relay] Join Code: " + joinCode);
 

@@ -4,25 +4,15 @@ using UnityEngine.UI;
 
 public class LobbyStarter : MonoBehaviour
 {
-    public Text statusText; // Можно не указывать, если UI не нужен
+    public Text statusText;
 
     void Start()
     {
-        switch (MainMenuUI.ChosenRole)
-        {
-            case NetworkRole.Host:
-                NetworkManager.Singleton.StartHost();
-                SetStatus("Запущен Host");
-                break;
-
-            case NetworkRole.Client:
-                NetworkManager.Singleton.StartClient();
-                SetStatus("Подключение как клиент...");
-                break;
-        }
-
+        // Больше не запускаем Host или Client вручную, это делает RelayConnector
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+
+        SetStatus("Ожидание подключения...");
     }
 
     void OnClientConnected(ulong clientId)

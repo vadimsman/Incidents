@@ -1,8 +1,6 @@
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class RelayUI : MonoBehaviour
 {
@@ -21,51 +19,60 @@ public class RelayUI : MonoBehaviour
 
     public async void OnClickCreateHost()
     {
-        statusText.text = "Создание хоста...";
+        SetStatus("Создание хоста...");
 
         string joinCode = await relayConnector.StartHostAsync();
         Debug.Log("[UI] Join Code: " + joinCode);
 
         if (!string.IsNullOrEmpty(joinCode))
         {
-            statusText.text = $"Join Code: {joinCode}";
+            SetStatus($"Join Code: {joinCode}");
             await Task.Delay(1500);
-            CameraUI.SetActive(false);
-            StatusLobbyUI.SetActive(true);
-            statusTextLobby.text = $"Join Code: {joinCode}";
+            SwitchToLobbyUI(joinCode);
         }
         else
         {
-            statusText.text = "Ошибка создания хоста.";
+            SetStatus("Ошибка создания хоста.");
         }
     }
-
 
     public async void OnClickJoinClient()
     {
         string code = joinCodeInput.text.Trim();
         if (string.IsNullOrEmpty(code))
         {
-            statusText.text = "Введите Join Code!";
+            SetStatus("Введите Join Code!");
             return;
         }
 
-        statusText.text = "Подключение...";
+        SetStatus("Подключение...");
         bool success = await relayConnector.StartClientAsync(code);
 
         if (success)
         {
-            statusText.text = "Успешно подключено!";
-
-            // Небольшая задержка, чтобы пользователь увидел сообщение
+            SetStatus("Успешно подключено!");
             await Task.Delay(1500);
             CameraUI.SetActive(false);
         }
         else
         {
-            statusText.text = "Ошибка подключения.";
+            SetStatus("Ошибка подключения.");
         }
     }
 
+    private void SetStatus(string message)
+    {
+        if (statusText != null)
+            statusText.text = message;
+        Debug.Log("[Status] " + message);
+    }
+
+    private void SwitchToLobbyUI(string joinCode)
+    {
+        CameraUI.SetActive(false);
+        StatusLobbyUI.SetActive(true);
+        if (statusTextLobby != null)
+            statusTextLobby.text = $"Join Code: {joinCode}";
+    }
 }
 
