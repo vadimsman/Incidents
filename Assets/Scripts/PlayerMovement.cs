@@ -1,8 +1,10 @@
-using UnityEngine;
 using Cinemachine;
+using Unity.Netcode;
+using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
-public class PlayerMovement : MonoBehaviour
+public class PlayerMovement : NetworkBehaviour
+
 {
     [Header("Movement")]
     public float walkSpeed = 3f;
@@ -27,6 +29,7 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        if (!IsOwner) return;
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 direction = (cameraTransform.right * horizontal + cameraTransform.forward * vertical);
