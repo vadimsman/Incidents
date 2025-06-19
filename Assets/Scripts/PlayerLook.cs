@@ -1,27 +1,31 @@
 using UnityEngine;
+using Unity.Netcode; // Для сетевой логики (определение владельца)
 
-public class PlayerLook : MonoBehaviour
+public class PlayerLook : NetworkBehaviour
 {
-    public Transform playerBody;        // Объект игрока (Player)
-    public Transform cameraRoot;        // Объект камеры (CameraRoot)
-    public float mouseSensitivity = 2f;
+    public Transform playerBody;        // Объект тела игрока (вращается по горизонтали)
+    public Transform cameraRoot;        // Камера или её контейнер (вращается по вертикали)
+    public float mouseSensitivity = 2f; // Чувствительность мыши
 
-    float xRotation = 0f;
+    private float xRotation = 0f; // Текущее вертикальное вращение камеры (вверх/вниз)
 
     void Update()
     {
-        // Получаем ввод мыши
+        // Управление только у владельца объекта
+        if (!IsOwner) return;
+
+        // Получаем движение мыши
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
-        // Вращаем тело игрока по оси Y
+        // Поворачиваем тело игрока по горизонтали (оси Y)
         playerBody.Rotate(Vector3.up * mouseX);
 
-        // Ограничиваем поворот по X (взгляд вверх/вниз)
+        // Обновляем вертикальное вращение камеры
         xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -80f, 80f);
+        xRotation = Mathf.Clamp(xRotation, -80f, 80f); // Ограничиваем угол обзора
 
-        // Вращаем только "голову" (cameraRoot)
+        // Применяем поворот к "голове" (камера наклоняется вверх/вниз)
         cameraRoot.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
     }
 }

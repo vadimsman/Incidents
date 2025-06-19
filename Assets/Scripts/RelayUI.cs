@@ -21,7 +21,7 @@ public class RelayUI : MonoBehaviour
     {
         SetStatus("Создание хоста...");
 
-        string joinCode = await relayConnector.StartHostAsync();
+        string joinCode = await relayConnector.CreateRelayAsync();
         Debug.Log("[UI] Join Code: " + joinCode);
 
         if (!string.IsNullOrEmpty(joinCode))
