@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 public class MainMenuFlow : MonoBehaviour
 {
     public GameObject lobbyUI;
+    public GameObject MainMenuUI;
 
     // Название первой сюжетной сцены
     public string firstLevelSceneName = "Level_01";
@@ -18,6 +19,7 @@ public class MainMenuFlow : MonoBehaviour
     public void OnClickMultiplayer()
     {
         lobbyUI.SetActive(true); // Показываем UI лобби на той же сцене
+        MainMenuUI.SetActive(false);
     }
 
     // Кнопка "Начать игру" из UI лобби (вызывается хостом)

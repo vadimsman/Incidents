@@ -17,6 +17,7 @@ public class LobbyUIManager : MonoBehaviour
     [SerializeField] private Button startGameButton;
     [SerializeField] private Transform playerListContainer;
     [SerializeField] private GameObject playerListEntryPrefab;
+    [SerializeField] private TMP_Text relayCodeText; // Поле для отображения Relay-кода
 
     [Header("Логика")]
     [SerializeField] private LobbyConnector lobbyConnector;
@@ -65,6 +66,12 @@ public class LobbyUIManager : MonoBehaviour
         lobbyPanel.SetActive(false);
         hostPanel.SetActive(isHost);
         clientPanel.SetActive(!isHost);
+
+        if (isHost && relayCodeText != null && lobbyConnector != null)
+        {
+            // Устанавливаем Relay-код в UI
+            relayCodeText.text = $"{lobbyConnector.JoinCode}";
+        }
     }
 
     private void OnClientConnected(ulong clientId)
@@ -128,6 +135,20 @@ public class LobbyUIManager : MonoBehaviour
         }
 
         startGameButton.interactable = true;
+    }
+
+    private void Update()
+    {
+        // Автообновление списка игроков (на случай если кто-то добавился после Awake)
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            ulong clientId = client.ClientId;
+            if (!readyStates.ContainsKey(clientId))
+            {
+                readyStates[clientId] = false;
+                OnClientConnected(clientId);
+            }
+        }
     }
 }
 

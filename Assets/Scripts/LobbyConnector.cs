@@ -1,3 +1,6 @@
+п»їusing System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
@@ -7,78 +10,80 @@ using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using System.Threading.Tasks;
 
 public class LobbyConnector : MonoBehaviour
 {
-    private Lobby currentLobby;
-    private string playerId => AuthenticationService.Instance.PlayerId;
-    public int maxPlayers = 4;
-    public GameObject HostLobbyUI;
-    public GameObject ClientLobbyUI;
+    private Lobby _lobby;
+    private string _joinCode;
 
-    private async void Start()
-    {
-        await UnityServices.InitializeAsync();
+    public string JoinCode => _joinCode; // РґРѕР±Р°РІРёР»Рё РїСѓР±Р»РёС‡РЅС‹Р№ РґРѕСЃС‚СѓРї
 
-        if (!AuthenticationService.Instance.IsSignedIn)
-        {
-            await AuthenticationService.Instance.SignInAnonymouslyAsync();
-        }
-    }
+    [SerializeField] private int maxPlayers = 4;
+    [SerializeField] private string lobbyName = "Incidents Lobby";
 
-    // Создание лобби хостом
     public async void CreateLobby()
     {
         try
         {
-            string lobbyName = "Incidents Lobby";
-            CreateLobbyOptions options = new CreateLobbyOptions { IsPrivate = false };
+            // РЎРѕР·РґР°РµРј РІС‹РґРµР»РµРЅРёРµ СЃРµСЂРІРµСЂР° РІ Relay
+            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(maxPlayers - 1);
+            _joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
-            currentLobby = await Lobbies.Instance.CreateLobbyAsync(lobbyName, maxPlayers, options);
-
-            // Создание Relay-сервера
-            Allocation alloc = await RelayService.Instance.CreateAllocationAsync(maxPlayers);
-            string joinCode = await RelayService.Instance.GetJoinCodeAsync(alloc.AllocationId);
-
-            // Обновляем данные лобби (JoinCode для клиентов)
-            await Lobbies.Instance.UpdateLobbyAsync(currentLobby.Id, new UpdateLobbyOptions
+            // РЎРѕР·РґР°РµРј Р»РѕР±Р±Рё Рё СЃРѕС…СЂР°РЅСЏРµРј JoinCode РІ Data
+            CreateLobbyOptions options = new CreateLobbyOptions
             {
-                Data = new System.Collections.Generic.Dictionary<string, DataObject>
+                IsPrivate = false,
+                Data = new Dictionary<string, DataObject>
                 {
-                    {"joinCode", new DataObject(DataObject.VisibilityOptions.Member, joinCode)}
+                    { "joinCode", new DataObject(DataObject.VisibilityOptions.Public, _joinCode) }
                 }
-            });
+            };
 
-            // Настройка транспорта и запуск хоста
-            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            transport.SetHostRelayData(alloc.RelayServer.IpV4, (ushort)alloc.RelayServer.Port, alloc.AllocationIdBytes, alloc.Key, alloc.ConnectionData);
+            _lobby = await LobbyService.Instance.CreateLobbyAsync(lobbyName, maxPlayers, options);
+            Debug.Log($"РЎРѕР·РґР°РЅРѕ Р»РѕР±Р±Рё СЃ РєРѕРґРѕРј: {_lobby.LobbyCode}, JoinCode РґР»СЏ Relay: {_joinCode}");
+
+            // Р—Р°РїСѓСЃРєР°РµРј С…РѕСЃС‚
+            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(
+                allocation.RelayServer.IpV4,
+                (ushort)allocation.RelayServer.Port,
+                allocation.AllocationIdBytes,
+                allocation.Key,
+                allocation.ConnectionData);
+
             NetworkManager.Singleton.StartHost();
-            HostLobbyUI.SetActive(true);
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
-            Debug.LogError($"Ошибка создания лобби: {e.Message}");
+            Debug.LogError($"РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ Р»РѕР±Р±Рё: {e.Message}");
         }
     }
 
-    // Подключение к существующему лобби по JoinCode
-    public async void JoinLobby(string joinCode)
+    public async void JoinLobby(string lobbyCode)
     {
         try
         {
-            // Получаем allocation по join-коду
-            JoinAllocation joinAlloc = await RelayService.Instance.JoinAllocationAsync(joinCode);
+            // РџРѕРґРєР»СЋС‡Р°РµРјСЃСЏ Рє Р»РѕР±Р±Рё
+            _lobby = await LobbyService.Instance.JoinLobbyByCodeAsync(lobbyCode);
 
-            // Настройка транспорта и запуск клиента
-            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            transport.SetClientRelayData(joinAlloc.RelayServer.IpV4, (ushort)joinAlloc.RelayServer.Port, joinAlloc.AllocationIdBytes, joinAlloc.Key, joinAlloc.ConnectionData, joinAlloc.HostConnectionData);
+            string joinCode = _lobby.Data["joinCode"].Value;
+
+            // РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ Relay
+            JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
+
+            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(
+                joinAllocation.RelayServer.IpV4,
+                (ushort)joinAllocation.RelayServer.Port,
+                joinAllocation.AllocationIdBytes,
+                joinAllocation.Key,
+                joinAllocation.ConnectionData,
+                joinAllocation.HostConnectionData);
+
             NetworkManager.Singleton.StartClient();
-            ClientLobbyUI.SetActive(true);
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
-            Debug.LogError($"Ошибка подключения к лобби: {e.Message}");
+            Debug.LogError($"РћС€РёР±РєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє Р»РѕР±Р±Рё: {e.Message}");
         }
     }
 }
+
